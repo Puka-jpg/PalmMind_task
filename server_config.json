@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem",
+                     "./palmmind_resources"]
+        },
+        "palmmind": {
+            "command": "uv",
+            "args": ["run", 
+                    "server.py"]
+        }
+     
+    }
+}

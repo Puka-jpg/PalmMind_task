@@ -1,0 +1,47 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.env
+.env.local
+.env.*.local
+
+# Google OAuth credentials and tokens
+credentials.json
+token.json
+.gcp-saved-tokens.json
+
+
+# Experimental/development files
+palmmind_server.py
+simple_client.py
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# MCP and AI specific
+mcp-debug.log
+anthropic.log
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
