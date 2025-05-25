@@ -15,24 +15,19 @@ def extract_name_from_text(text):
     """Extract name from various input patterns - with aggressive cleaning"""
     text = text.strip()
     
-    # AGGRESSIVE CLEANING - Remove Claude's added context
-    # Remove patterns like "Name: Pukar Kafle - context"
+    
     if " - " in text:
         text = text.split(" - ")[0]
     
-    # Remove "Name:" prefix if Claude added it
     if text.lower().startswith("name:"):
         text = text[5:].strip()
     
-    # Remove any remaining prefixes
     text = re.sub(r'^(name:?\s*)', '', text, flags=re.IGNORECASE)
     
-    # Pattern 1: "My name is John Doe"
     match = re.search(r"my name is (.+)", text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
     
-    # Pattern 2: "I'm John Doe" or "I am John Doe"
     match = re.search(r"i'?m (.+)", text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
@@ -41,7 +36,6 @@ def extract_name_from_text(text):
     if match:
         return match.group(1).strip()
     
-    # Pattern 3: Just the name directly
     return text.strip()
 
 def parse_date_from_text(date_text):
@@ -58,8 +52,8 @@ def parse_date_from_text(date_text):
         elif 'next week' in date_text:
             return (today + timedelta(days=7)).strftime('%Y-%m-%d')
         elif 'next monday' in date_text:
-            days_ahead = 0 - today.weekday()  # Monday is 0
-            if days_ahead <= 0:  # Target day already happened this week
+            days_ahead = 0 - today.weekday() 
+            if days_ahead <= 0:  
                 days_ahead += 7
             return (today + timedelta(days=days_ahead)).strftime('%Y-%m-%d')
         elif 'next tuesday' in date_text:
@@ -96,7 +90,7 @@ def parse_date_from_text(date_text):
             days = int(re.search(r'in (\d+) days?', date_text).group(1))
             return (today + timedelta(days=days)).strftime('%Y-%m-%d')
         else:
-            # Try to parse other formats like "May 30", "2025-05-30", etc.
+            #
             parsed_date = parser.parse(date_text, fuzzy=True)
             return parsed_date.strftime('%Y-%m-%d')
             
@@ -129,13 +123,13 @@ def collect_contact_info(user_message: str, session_id: str = "default") -> str:
     """Collect contact information when user wants to be reached"""
     global contact_state, user_info
 
-    # Clean and process input
+    
     if isinstance(user_message, list):
         user_message = " ".join(str(item) for item in user_message)
     elif not isinstance(user_message, str):
         user_message = str(user_message)
     
-    # AGGRESSIVE CLEANING - Remove Claude's context injection
+    
     user_message = user_message.strip()
     if " - " in user_message and ("would like" in user_message.lower() or "want" in user_message.lower()):
         user_message = user_message.split(" - ")[0]
@@ -149,7 +143,7 @@ def collect_contact_info(user_message: str, session_id: str = "default") -> str:
     
     if session_id not in contact_state:
         contact_state[session_id] = {"step": "name", "info": {}}
-        return "I'd be happy to arrange that! What's your name?"
+        return "I'd be happy to arrange that! "
     
     state = contact_state[session_id]
     
@@ -206,14 +200,14 @@ def book_appointment(user_message: str, session_id: str = "default") -> str:
     elif not isinstance(user_message, str):
         user_message = str(user_message)
     
-    # AGGRESSIVE CLEANING - Remove Claude's context injection
+  
     user_message = user_message.strip()
     if " - " in user_message and ("would like" in user_message.lower() or "want" in user_message.lower()):
         user_message = user_message.split(" - ")[0]
     if user_message.lower().startswith("name:"):
         user_message = user_message[5:].strip()
     
-    # Check if we already have user name from shared session and no active appointment session
+    
     if 'name' in user_info and session_id not in appointment_state:
         appointment_state[session_id] = {"step": "date", "info": {"name": user_info['name']}}
         return f"Great {user_info['name']}! When would you like to schedule your appointment? (e.g., 'tomorrow', 'next Monday', 'May 30th')"
@@ -231,7 +225,6 @@ def book_appointment(user_message: str, session_id: str = "default") -> str:
         state["info"]["name"] = extracted_name
         user_info['name'] = extracted_name  # Store in global user info
         state["step"] = "date"
-        return f"Great {extracted_name}! When would you like to schedule your appointment? (e.g., 'tomorrow', 'next Monday', 'May 30th')"
     
     # Handle date collection
     elif state["step"] == "date":
