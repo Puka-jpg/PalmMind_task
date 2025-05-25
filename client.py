@@ -37,7 +37,7 @@ class PalmMindChatBot:
                 if server_name == "filesystem":
                     allowed_tools = ['read_file', 'search_files', 'list_directory']
                 elif server_name == "palmmind":
-                    allowed_tools = ['collect_contact_info', 'book_appointment']  # Added book_appointment
+                    allowed_tools = ['collect_contact_info', 'book_appointment']  
                 else:
                     allowed_tools = []
                     
@@ -141,13 +141,13 @@ Be helpful but don't over-fetch information!"""
                         
                         result = await session.call_tool(content.name, arguments=content.input)
                         
-                        # Print the tool result immediately so user can see it - extract text properly
-                        if result.content:
+                        
+                        if result.content and content.name in ['collect_contact_info', 'book_appointment']:
                             for item in result.content:
                                 if hasattr(item, 'text'):
                                     print(item.text)
                         
-                        # Adding assistant message with tool use
+                        
                         self.conversation_history.append({'role': 'assistant', 'content': assistant_content})
                         
                         # Add tool result

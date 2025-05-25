@@ -12,8 +12,20 @@ contact_state = {}
 appointment_state = {}
 
 def extract_name_from_text(text):
-    """Extract name from various input patterns"""
+    """Extract name from various input patterns - with aggressive cleaning"""
     text = text.strip()
+    
+    # AGGRESSIVE CLEANING - Remove Claude's added context
+    # Remove patterns like "Name: Pukar Kafle - context"
+    if " - " in text:
+        text = text.split(" - ")[0]
+    
+    # Remove "Name:" prefix if Claude added it
+    if text.lower().startswith("name:"):
+        text = text[5:].strip()
+    
+    # Remove any remaining prefixes
+    text = re.sub(r'^(name:?\s*)', '', text, flags=re.IGNORECASE)
     
     # Pattern 1: "My name is John Doe"
     match = re.search(r"my name is (.+)", text, re.IGNORECASE)
@@ -30,7 +42,7 @@ def extract_name_from_text(text):
         return match.group(1).strip()
     
     # Pattern 3: Just the name directly
-    return text
+    return text.strip()
 
 def parse_date_from_text(date_text):
     """Parse natural language date to YYYY-MM-DD format"""
@@ -117,12 +129,20 @@ def collect_contact_info(user_message: str, session_id: str = "default") -> str:
     """Collect contact information when user wants to be reached"""
     global contact_state, user_info
 
+    # Clean and process input
     if isinstance(user_message, list):
         user_message = " ".join(str(item) for item in user_message)
     elif not isinstance(user_message, str):
         user_message = str(user_message)
     
-    # Check if we already have user name from appointment booking
+    # AGGRESSIVE CLEANING - Remove Claude's context injection
+    user_message = user_message.strip()
+    if " - " in user_message and ("would like" in user_message.lower() or "want" in user_message.lower()):
+        user_message = user_message.split(" - ")[0]
+    if user_message.lower().startswith("name:"):
+        user_message = user_message[5:].strip()
+    
+    # Check if we already have user name from shared session
     if 'name' in user_info and session_id not in contact_state:
         contact_state[session_id] = {"step": "contact", "info": {"name": user_info['name']}}
         return f"Great {user_info['name']}! Please provide your phone and email:"
@@ -166,8 +186,9 @@ Contact: {state['info']['contact']}
                 name = state['info']['name']
                 del contact_state[session_id]
                 return f"✅ Thanks {name}! We'll contact you soon!"
-            except:
-                return "Error saving. Please try again."
+            except Exception as e:
+                print(f"Contact save error: {e}")
+                return "Error saving contact. Please try again."
         else:
             contact_state[session_id] = {"step": "name", "info": {}}
             return "Let's start over. What's your name?"
@@ -179,18 +200,32 @@ def book_appointment(user_message: str, session_id: str = "default") -> str:
     """Book appointment with file storage and date format validation"""
     global appointment_state, user_info
 
+    # Clean and process input
     if isinstance(user_message, list):
         user_message = " ".join(str(item) for item in user_message)
     elif not isinstance(user_message, str):
         user_message = str(user_message)
     
-    # Initialize appointment session
+    # AGGRESSIVE CLEANING - Remove Claude's context injection
+    user_message = user_message.strip()
+    if " - " in user_message and ("would like" in user_message.lower() or "want" in user_message.lower()):
+        user_message = user_message.split(" - ")[0]
+    if user_message.lower().startswith("name:"):
+        user_message = user_message[5:].strip()
+    
+    # Check if we already have user name from shared session and no active appointment session
+    if 'name' in user_info and session_id not in appointment_state:
+        appointment_state[session_id] = {"step": "date", "info": {"name": user_info['name']}}
+        return f"Great {user_info['name']}! When would you like to schedule your appointment? (e.g., 'tomorrow', 'next Monday', 'May 30th')"
+    
+    # Initialize appointment session if it doesn't exist
     if session_id not in appointment_state:
         appointment_state[session_id] = {"step": "name", "info": {}}
-        return "I'll help you book an appointment!"
+        return "I'll help you book an appointment! What's your name?"
     
     state = appointment_state[session_id]
     
+    # Handle name collection
     if state["step"] == "name":
         extracted_name = extract_name_from_text(user_message)
         state["info"]["name"] = extracted_name
@@ -198,6 +233,7 @@ def book_appointment(user_message: str, session_id: str = "default") -> str:
         state["step"] = "date"
         return f"Great {extracted_name}! When would you like to schedule your appointment? (e.g., 'tomorrow', 'next Monday', 'May 30th')"
     
+    # Handle date collection
     elif state["step"] == "date":
         # Parse the date
         parsed_date = parse_date_from_text(user_message)
@@ -213,21 +249,25 @@ def book_appointment(user_message: str, session_id: str = "default") -> str:
         state["step"] = "confirm"
         return f"Perfect! I'll schedule your appointment for {parsed_date}. Confirm appointment for {state['info']['name']} on {parsed_date}? (yes/no)"
     
+    # Handle confirmation
     elif state["step"] == "confirm":
-        if user_message.lower().startswith('y'):
+        if user_message.lower() in ['yes', 'y', 'yeah', 'yep', 'confirm']:
             name = state['info']['name']
             date = state['info']['date']
             
             # Save appointment to file
             if save_appointment_to_file(date, name, "confirmed"):
+                # Clean up session state
                 del appointment_state[session_id]
                 return f"✅ Appointment booked successfully!\n\n📅 {name} - {date}\n💾 Your appointment has been saved and we'll confirm the exact time with you soon!"
             else:
                 return "Error saving appointment. Please try again."
         else:
+            # Reset appointment state
             appointment_state[session_id] = {"step": "name", "info": {}}
             return "Let's start over. What's your name?"
     
+    # Fallback
     return "Something went wrong. Let me start over - what's your name?"
 
 if __name__ == "__main__":
